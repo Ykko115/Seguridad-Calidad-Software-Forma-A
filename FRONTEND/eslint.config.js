@@ -26,4 +26,25 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    files: ['src/test/**'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: { ...globals.node, ...globals.jest },
+    },
+  },
+  {
+    files: ['__mocks__/**'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: globals.node,
+    },
+  },
+  {
+    files: ['**/__tests__/**/*.test.{js,jsx}', '**/*.test.{js,jsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: { ...globals.node, ...globals.browser, ...globals.jest },
+    },
+  },
 ])
