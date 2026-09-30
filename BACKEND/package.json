@@ -8,7 +8,8 @@
     "dev": "nodemon",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest tests/integracion_api.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -6,11 +6,12 @@ module.exports = {
     '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/__mocks__/fileMock.js',
   },
   transform: {
-    '^.+\\.jsx?$': 'babel-jest',
+    '^.+\\.(js|jsx|mjs)$': 'babel-jest',
   },
   transformIgnorePatterns: [
     '/node_modules/(?!(material-react-table|@mui|sonner)/)',
   ],
   testMatch: ['<rootDir>/src/**/__tests__/**/*.test.{js,jsx}'],
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/src/__tests__/integration/'],
   testTimeout: 15000,
 };

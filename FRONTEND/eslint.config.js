@@ -41,7 +41,11 @@ export default defineConfig([
     },
   },
   {
-    files: ['**/__tests__/**/*.test.{js,jsx}', '**/*.test.{js,jsx}'],
+    files: [
+      '**/__tests__/**/*.test.{js,jsx}',
+      '**/*.test.{js,jsx}',
+      'src/__tests__/integration/**/*.jsx',
+    ],
     languageOptions: {
       ecmaVersion: 'latest',
       globals: { ...globals.node, ...globals.browser, ...globals.jest },
