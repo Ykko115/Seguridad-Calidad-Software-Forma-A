@@ -1,0 +1,304 @@
+name: CI - Pruebas automatizadas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend - unitarias + integracion
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: BACKEND
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: npm
+          cache-dependency-path: BACKEND/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Pruebas unitarias e integracion (npm test)
+        run: npm test
+
+      - name: Cobertura (npm run test:coverage)
+        run: npm run test:coverage
+
+      - name: Publicar cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: BACKEND/coverage
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend - unitarias + integracion
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: FRONTEND
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: FRONTEND/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint (informativo)
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Pruebas unitarias (npm test)
+        run: npm test
+
+      - name: Pruebas de integracion (npm run test:integration)
+        run: npm run test:integration
+
+      - name: Cobertura (npm run test:coverage)
+        run: npm run test:coverage
+
+      - name: Publicar cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: FRONTEND/coverage
+          if-no-files-found: ignore
+
+  globales:
+    name: Globales - API + BD reales
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Levantar PostgreSQL y backend
+        run: docker compose up -d --build atlas-postgres atlas-backend
+
+      - name: Esperar a la API y la carga del dump
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST http://localhost:4450/autenticacion/login \
+              -H 'Content-Type: application/json' \
+              -d '{"nombre_usuario":"admin","password":"admin"}' || true)
+            if [ "$code" = "200" ]; then
+              echo "API y base de datos listas tras $i intento(s)"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "La API o la base de datos no estuvieron listas a tiempo"
+          docker compose logs atlas-backend
+          exit 1
+
+      - name: Configurar Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: npm
+          cache-dependency-path: BACKEND/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: BACKEND
+        run: npm ci
+
+      - name: Pruebas globales (API + BD)
+        working-directory: BACKEND
+        env:
+          GLOBALES_DATABASE_URL: postgres://postgres:postgres@localhost:15432/atlas
+          GLOBALES_API_URL: http://localhost:4450
+        run: npm run test:globales
+
+      - name: Logs del stack (si falla)
+        if: failure()
+        run: docker compose logs
+
+      - name: Apagar el stack
+        if: always()
+        run: docker compose down -v
+
+  e2e:
+    name: E2E - Selenium (navegador real)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Levantar el stack completo
+        run: docker compose up -d --build
+
+      - name: Esperar a frontend y API
+        run: |
+          for i in $(seq 1 80); do
+            web=""
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST http://localhost:4450/autenticacion/login \
+              -H 'Content-Type: application/json' \
+              -d '{"nombre_usuario":"admin","password":"admin"}' || true)
+            curl -sf http://localhost:3350/ >/dev/null && web="ok"
+            if [ "$code" = "200" ] && [ "$web" = "ok" ]; then
+              echo "Stack disponible tras $i intento(s)"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "El stack no respondio a tiempo"
+          docker compose logs
+          exit 1
+
+      - name: Verificar navegador Chrome
+        run: google-chrome --version || chromium --version || true
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: E2E/package-lock.json
+
+      - name: Instalar dependencias E2E
+        working-directory: E2E
+        run: npm ci
+
+      - name: Pruebas E2E (npm test)
+        working-directory: E2E
+        env:
+          E2E_URL: http://localhost:3350
+          E2E_API_URL: http://localhost:4450
+        run: npm test
+
+      - name: Logs del stack (si falla)
+        if: failure()
+        run: docker compose logs
+
+      - name: Apagar el stack
+        if: always()
+        run: docker compose down -v
+
+  owasp:
+    name: OWASP ZAP - escaneo de seguridad
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Levantar el stack completo
+        run: docker compose up -d --build
+
+      - name: Esperar a frontend y API
+        run: |
+          for i in $(seq 1 80); do
+            web=""
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST http://localhost:4450/autenticacion/login \
+              -H 'Content-Type: application/json' \
+              -d '{"nombre_usuario":"admin","password":"admin"}' || true)
+            curl -sf http://localhost:3350/ >/dev/null && web="ok"
+            if [ "$code" = "200" ] && [ "$web" = "ok" ]; then
+              echo "Stack disponible tras $i intento(s)"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "El stack no respondio a tiempo"
+          docker compose logs
+          exit 1
+
+      - name: Preparar carpeta de reportes
+        run: |
+          mkdir -p ZAP/reportes
+          chmod -R 777 ZAP/reportes
+
+      - name: ZAP API scan (OpenAPI, modo seguro)
+        run: |
+          docker run --rm --network host -v "$PWD/ZAP/reportes:/zap/wrk:rw" zaproxy/zap-stable \
+            zap-api-scan.py -f openapi -t http://localhost:4450/openapi.json \
+            -O http://localhost:4450 -S \
+            -r api-baseline.html -J api-baseline.json \
+            || echo "::warning::ZAP api-scan termino con codigo $? (0=PASS, 1=FAIL, 2=WARN esperado)"
+
+      - name: ZAP baseline (frontend, pasivo)
+        run: |
+          docker run --rm --network host -v "$PWD/ZAP/reportes:/zap/wrk:rw" zaproxy/zap-stable \
+            zap-baseline.py -t http://localhost:3350 -m 2 -j \
+            -r baseline-frontend.html -J baseline-frontend.json \
+            || echo "::warning::ZAP baseline termino con codigo $? (0=PASS, 1=FAIL, 2=WARN esperado)"
+
+      - name: ZAP full scan (frontend, activo)
+        run: |
+          docker run --rm --network host -v "$PWD/ZAP/reportes:/zap/wrk:rw" zaproxy/zap-stable \
+            zap-full-scan.py -t http://localhost:3350 -m 2 -j \
+            -r fullscan-frontend.html -J fullscan-frontend.json \
+            || echo "::warning::ZAP full-scan termino con codigo $? (0=PASS, 1=FAIL, 2=WARN esperado)"
+
+      - name: Publicar reportes ZAP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-zap-reportes
+          path: ZAP/reportes
+          if-no-files-found: warn
+
+      - name: Logs del stack (si falla)
+        if: failure()
+        run: docker compose logs
+
+      - name: Apagar el stack
+        if: always()
+        run: docker compose down -v
+
+  resumen:
+    name: Resumen del pipeline
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [backend, frontend, globales, e2e, owasp]
+    steps:
+      - name: Mostrar resultados
+        run: |
+          echo "Backend:   ${{ needs.backend.result }}"
+          echo "Frontend:  ${{ needs.frontend.result }}"
+          echo "Globales:  ${{ needs.globales.result }}"
+          echo "E2E:       ${{ needs.e2e.result }}"
+          echo "OWASP ZAP: ${{ needs.owasp.result }} (informativo)"
+
+      - name: Verificar pruebas obligatorias
+        run: |
+          if [ "${{ needs.backend.result }}" != "success" ] || \
+             [ "${{ needs.frontend.result }}" != "success" ] || \
+             [ "${{ needs.globales.result }}" != "success" ] || \
+             [ "${{ needs.e2e.result }}" != "success" ]; then
+            echo "Hay pruebas obligatorias que fallaron."
+            exit 1
+          fi
+          echo "Todas las pruebas obligatorias pasaron."

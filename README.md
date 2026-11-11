@@ -44,3 +44,42 @@ Abre la terminal y situate en la raíz del proyecto y ejecuta el comando:
 	4.3 Database: `atlas`
 	4.4 Nombre de usuario: `postgres`
 	4.5 Contraseña: `postgres`
+
+## Integración continua (GitHub Actions)
+El pipeline `.github/workflows/ci.yml` automatiza la ejecución de todas las suites del
+plan de pruebas. Se dispara en cada push a `main`, en cada Pull Request hacia `main` y
+manualmente desde la pestaña **Actions** (`workflow_dispatch`).
+
+| Job | Qué ejecuta | Infraestructura |
+|-----|-------------|-----------------|
+| `backend` | Unitarias + integración + completitud (`npm test`) y cobertura (`npm run test:coverage`) | Node.js 18 |
+| `frontend` | Lint (informativo), unitarias, integración MSW y cobertura | Node.js 22 |
+| `globales` | `npm run test:globales` (API + PostgreSQL reales) | docker compose (postgres + backend) |
+| `e2e` | Suites Selenium de `E2E/` sobre el stack completo | docker compose + Chrome headless |
+| `owasp` | Escaneos OWASP ZAP: API scan (OpenAPI), baseline y full scan | docker compose + contenedor ZAP |
+| `resumen` | Consolida el resultado y falla si alguna prueba obligatoria falla | — |
+
+- Los jobs `globales`, `e2e` y `owasp` levantan el stack con `docker compose up -d --build`
+  y lo apagan al terminar (`docker compose down -v`).
+- El escaneo OWASP ZAP es **informativo** (no bloquea el pipeline): los hallazgos `FAIL`/`WARN`
+  son esperados en esta app intencionalmente vulnerable. Los reportes quedan como artefactos
+  (`owasp-zap-reportes`) y las coberturas en `backend-coverage` y `frontend-coverage`.
+- El paso de `lint` del frontend es informativo porque el repositorio mantiene errores de ESLint
+  previos ajenos a la automatización.
+
+### Ejecución local equivalente
+```bash
+# Unitarias + integración
+cd BACKEND && npm test && npm run test:coverage
+cd ../FRONTEND && npm test && npm run test:integration
+
+# Globales (requiere el stack levantado)
+docker compose up -d --build atlas-postgres atlas-backend
+cd BACKEND && npm run test:globales
+
+# E2E (requiere el stack completo)
+cd E2E && npm test
+
+# OWASP ZAP (requiere el stack completo)
+powershell -ExecutionPolicy Bypass -File ZAP\ejecutar-scans.ps1
+```
