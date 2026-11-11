@@ -18,5 +18,6 @@ RUN mkdir -p uploads/contracts
 EXPOSE 3000
 
 # Comando para iniciar la aplicación
-CMD ["node", "src/app.js"]
+# server.js hace require("./app") y llama app.listen(PORT)
+CMD ["node", "src/server.js"]
 

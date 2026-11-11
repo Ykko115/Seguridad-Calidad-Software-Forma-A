@@ -1,0 +1,7 @@
+# Los scripts shell deben clonarse con finales de línea LF:
+# con CRLF el contenedor Postgres falla al ejecutarlos
+# (/bin/bash^M: bad interpreter).
+*.sh text eol=lf
+
+# Archivos de datos SQL también en LF para psql en Linux.
+*.sql text eol=lf
