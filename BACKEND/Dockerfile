@@ -18,5 +18,5 @@ RUN mkdir -p uploads/contracts
 EXPOSE 3000
 
 # Comando para iniciar la aplicación
-CMD ["node", "src/app.js"]
+CMD ["node", "src/server.js"]
 
