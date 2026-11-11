@@ -1,0 +1,12 @@
+{
+  "name": "e2e",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "jest --config jest.e2e.config.js"
+  },
+  "devDependencies": {
+    "jest": "^30.5.1",
+    "selenium-webdriver": "^4.27.0"
+  }
+}

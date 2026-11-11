@@ -75,6 +75,9 @@ export default function ContratosTabCreate({ onSuccess, onLoad }) {
             onChange={(e) =>
               setForm((f) => ({ ...f, cliente_id: e.target.value }))
             }
+            SelectProps={{
+              SelectDisplayProps: { "data-testid": "select-contrato-tab-cliente" },
+            }}
             sx={{ flex: 1, minWidth: 200 }}
             variant="outlined"
             fullWidth
@@ -92,6 +95,7 @@ export default function ContratosTabCreate({ onSuccess, onLoad }) {
             label="Título"
             value={form.titulo}
             onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))}
+            inputProps={{ "data-testid": "input-contrato-tab-titulo" }}
             sx={{ flex: 1, minWidth: 200 }}
             variant="outlined"
             fullWidth
@@ -105,6 +109,7 @@ export default function ContratosTabCreate({ onSuccess, onLoad }) {
             onChange={(e) =>
               setForm((f) => ({ ...f, fecha_inicio: e.target.value }))
             }
+            inputProps={{ "data-testid": "input-contrato-tab-fecha-inicio" }}
             InputLabelProps={{ shrink: true }}
             sx={{ flex: 1, minWidth: 200 }}
             variant="outlined"
@@ -117,6 +122,7 @@ export default function ContratosTabCreate({ onSuccess, onLoad }) {
             onChange={(e) =>
               setForm((f) => ({ ...f, fecha_fin: e.target.value }))
             }
+            inputProps={{ "data-testid": "input-contrato-tab-fecha-fin" }}
             InputLabelProps={{ shrink: true }}
             sx={{ flex: 1, minWidth: 200 }}
             variant="outlined"
@@ -131,16 +137,18 @@ export default function ContratosTabCreate({ onSuccess, onLoad }) {
           onChange={(e) =>
             setForm((f) => ({ ...f, descripcion: e.target.value }))
           }
+          inputProps={{ "data-testid": "input-contrato-tab-descripcion" }}
           variant="outlined"
           fullWidth
         />
         <TextField
           type="file"
           label="Archivo"
-          InputLabelProps={{ shrink: true }}
           inputProps={{
             accept: ".pdf,.doc,.docx,.xls,.xlsx",
+            "data-testid": "input-contrato-tab-archivo",
           }}
+          InputLabelProps={{ shrink: true }}
           onChange={(e) => setFile(e.target.files?.[0] || null)}
           variant="outlined"
           fullWidth
@@ -151,6 +159,7 @@ export default function ContratosTabCreate({ onSuccess, onLoad }) {
             variant="contained"
             onClick={onCreate}
             startIcon={<DescriptionIcon />}
+            data-testid="button-contrato-tab-guardar"
             sx={{
               minWidth: 150,
               backgroundColor: "#1B7576",

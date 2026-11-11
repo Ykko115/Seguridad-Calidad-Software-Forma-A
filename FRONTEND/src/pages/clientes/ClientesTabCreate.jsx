@@ -127,6 +127,7 @@ export default function ClientesTabCreate({ onSuccess, onLoad }) {
               onChange={(e) =>
                 setForm((f) => ({ ...f, rut: e.target.value }))
               }
+              inputProps={{ "data-testid": "input-cliente-tab-rut" }}
               sx={{ flex: 1, minWidth: 200 }}
               variant="outlined"
             />
@@ -137,6 +138,7 @@ export default function ClientesTabCreate({ onSuccess, onLoad }) {
               onChange={(e) =>
                 setForm((f) => ({ ...f, nombre: e.target.value }))
               }
+              inputProps={{ "data-testid": "input-cliente-tab-nombre" }}
               sx={{ flex: 1, minWidth: 200 }}
               variant="outlined"
               fullWidth
@@ -325,6 +327,7 @@ export default function ClientesTabCreate({ onSuccess, onLoad }) {
               onChange={(e) =>
                 setForm((f) => ({ ...f, correo: e.target.value }))
               }
+              inputProps={{ "data-testid": "input-cliente-tab-correo" }}
               sx={{ flex: 1, minWidth: 200 }}
               variant="outlined"
               fullWidth
@@ -438,6 +441,7 @@ export default function ClientesTabCreate({ onSuccess, onLoad }) {
             variant="contained"
             onClick={onCreate}
             startIcon={<PersonAddIcon />}
+            data-testid="button-cliente-tab-guardar"
             sx={{
               minWidth: 150,
               backgroundColor: "#1B7576",
