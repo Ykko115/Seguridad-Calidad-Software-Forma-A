@@ -6,8 +6,10 @@ const API = process.env.E2E_API_URL || "http://localhost:4450";
 
 async function crearDriver() {
   const opciones = new chrome.Options();
+  if (process.env.E2E_HEADED !== "1") {
+    opciones.addArguments("--headless=new");
+  }
   opciones.addArguments(
-    "--headless=new",
     "--window-size=1400,900",
     "--disable-gpu",
     "--no-sandbox",
